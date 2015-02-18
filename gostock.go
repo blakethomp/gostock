@@ -5,23 +5,32 @@ import (
 	"io/ioutil"
   	"net/http"
 	"log"
-	"os"
 	"encoding/json"
+	"strings"
 )
 
 func main() {
-	fmt.Println(os.Args[1])
-	res, err := http.Get("http://dev.markitondemand.com/Api/v2/Quote/json?symbol="+os.Args[1])
+	content, err := ioutil.ReadFile("stocks.txt")
 	if err != nil {
+		fmt.Println("hi")
 		log.Fatal(err)
+	} 
+	lines := strings.Split(string(content), "\n")
+		
+	for _,ticker := range lines { 
+		if len(ticker) > 0 {
+			res, err := http.Get("http://dev.markitondemand.com/Api/v2/Quote/json?symbol="+ticker)
+			if err != nil {
+				log.Fatal(err)
+			}
+			resp, err := ioutil.ReadAll(res.Body)
+			res.Body.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+			decode(resp)
+		}	
 	}
-	resp, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%s\n", resp)
-	decode(resp)
 }
 
 func decode(resp []byte) {
