@@ -12,6 +12,7 @@ import (
 	"strings"
 	"strconv"
 	"net/url"
+	"reflect"
 )
 
 type Stock struct {
@@ -20,16 +21,15 @@ type Stock struct {
 }
 
 type Data struct {
-	XMLName xml.Name `xml:"row"`
 	Symbol string `xml:"symbol"`
-	LastTradeDate string `xml:"lastTradeDate"`
-	LastTradeTime string `xml:"lastTradeTime"`
-	LastTradePrice string `xml:"lastTradePrice"`
-	Change string `xml:"change"`
-	ChangePct string `xml:"changePct"`
 	Open string `xml:"open"`
 	High string `xml:"high"`
 	Low string `xml:"low"`
+	Date string `xml:"lastTradeDate"`
+	Time string `xml:"lastTradeTime"`
+	Last string `xml:"lastTradePrice"`
+	Change string `xml:"change"`
+	Pct string `xml:"changePct"`
 }
 
 
@@ -66,7 +66,9 @@ func main() {
 
 	defer resp.Body.Close()
 
-	decodeXml(resp.Body)
+	stocks := decodeXml(resp.Body)
+
+	formatOutput(stocks)
 
 }
 
@@ -80,23 +82,54 @@ func substr(s string, pos, length int) string {
 }
 
 func (d Data) String() string {
-	color := 0
+	color := "0"
+
 	change, err := strconv.ParseFloat(d.Change, 32)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if change > 0 {
-		color = 32
-	} else {
-		color = 31
-	}
-	changePct := strings.Split(d.ChangePct, " ")
-	percent := changePct[len(changePct)-1]
-	return fmt.Sprintf("\033[1m %s  \t\033[0m\033[%dm%s (%s)\t\033[0m%s\t%s %s\t%s\t%s\t%s", d.Symbol,color, d.Change, percent, d.LastTradePrice, d.LastTradeDate, d.LastTradeTime, d.Open, d.High, d.Low)
 
+	if change > 0 {
+		color = "32"
+	} else {
+		color = "31"
+	}
+
+	v := reflect.ValueOf(d)
+
+	var fs, s, ansi, value string
+
+	// We're starting at 1 to skip the XML field name
+	for i := 0; i < v.NumField(); i++ {
+		value = v.Field(i).String()
+		switch v.Type().Field(i).Name {
+
+			case "Change":
+				ansi = color
+
+			case "Pct":
+				pct := strings.Split(value, " ")
+				value = pct[len(pct)-1]
+				ansi = color
+
+			case "Symbol":
+				ansi = "1"
+
+			case "Low":
+				ansi = "0"
+
+			default:
+				ansi = "0"
+		}
+
+		fs = "\033[%sm%s\033[0m\t"
+		s += fmt.Sprintf(fs, ansi, value)
+  }
+
+	return s
 }
 
-func decodeXml(body io.ReadCloser) {
+func decodeXml(body io.ReadCloser) Stock {
 
 	XMLdata := xml.NewDecoder(body)
 
@@ -107,14 +140,35 @@ func decodeXml(body io.ReadCloser) {
 		log.Fatal(err)
 	}
 
+	return s
+}
+
+func formatOutput (s Stock) {
 	w := new(tabwriter.Writer)
 
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
 
-	fmt.Fprintln(w, "\033[4mSymbol\tChange\033[4m\tLast\033[4m\t\tOpen\tHigh\tLow\033[0m")
+	var d Data
+	v := reflect.ValueOf(d)
+
+	var value, separator, header string
+
+	for i := 0; i < v.NumField(); i++ {
+		value = v.Type().Field(i).Name
+		if (i < (v.NumField() - 1)) {
+			separator = "\t"
+		} else {
+			separator = ""
+		}
+
+		header += fmt.Sprintf("\033[4m%s\033[0m%s", value, separator)
+	}
+
+	fmt.Fprintln(w, header)
 
 	for _, stock := range s.Data {
 		fmt.Fprintln(w, stock)
 	}
+
 	w.Flush()
 }
