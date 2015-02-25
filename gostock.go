@@ -2,14 +2,36 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"text/tabwriter"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"log"
-	"encoding/csv"
+	"encoding/xml"
 	"strings"
 	"strconv"
+	"net/url"
 )
+
+type Stock struct {
+	XMLName xml.Name `xml:"query"`
+	Data []Data `xml:"results>row"`
+}
+
+type Data struct {
+	XMLName xml.Name `xml:"row"`
+	Symbol string `xml:"symbol"`
+	LastTradeDate string `xml:"lastTradeDate"`
+	LastTradeTime string `xml:"lastTradeTime"`
+	LastTradePrice string `xml:"lastTradePrice"`
+	Change string `xml:"change"`
+	ChangePct string `xml:"changePct"`
+	Open string `xml:"open"`
+	High string `xml:"high"`
+	Low string `xml:"low"`
+}
+
 
 func main() {
 	content, err := ioutil.ReadFile("stocks.txt")
@@ -18,7 +40,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	lines := strings.Join(strings.Split(string(content), "\n"), ",")
+	symbols := strings.Join(strings.Split(string(content), "\n"), ",")
 
 	format := make([]string, 9)
 	format[0] = "s" 	// Symbol
@@ -31,47 +53,24 @@ func main() {
 	format[7] = "h"		// Day's High
 	format[8] = "g"		// Day's Low
 
+	v := url.Values{}
+	v.Set("q", "select * from csv where url='http://download.finance.yahoo.com/d/quotes.csv?f=" + strings.Join(format, "") + "&s=" + symbols + "&e=.csv' and columns='symbol,lastTradeDate,lastTradeTime,lastTradePrice,change,changePct,open,high,low'")
+	v.Add("format", "xml")
+	v.Add("env", "store://datatables.org/alltableswithkeys")
 
-	resp, err := http.Get("http://download.finance.yahoo.com/d/quote.csv?e=.csv&f=" + strings.Join(format, "") + "&s=" + lines)
+	resp, err := http.Get("https://query.yahooapis.com/v1/public/yql?" + v.Encode())
+
 	if err != nil {
 		log.Fatal(err)
-		fmt.Println("hi\n\n");
 	}
 
 	defer resp.Body.Close()
 
-	parseCsv(resp.Body)
+	decodeXml(resp.Body)
 
 }
 
-func parseCsv(body io.ReadCloser) {
-
-	reader := csv.NewReader(body)
-	record, err := reader.ReadAll()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Symbol	Date/Time		Last Trade		Change			Open		High		Low")
-	for _, each := range record {
-		color := 0
-		change, err := strconv.ParseFloat(each[4], 32)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if change > 0 {
-			color = 32
-		} else {
-			color = 31
-		}
-		pct := strings.Split(each[5], " ")
-		pt := pct[len(pct)-1]
-		fmt.Printf("%s	%s %s	%s			\x1b[%dm%s (%s)\x1b[0m		%s		%s		%s\n", each[0], each[1], each[2], each[3], color, each[4], pt, each[5], each[6], each[7])
-	}
-}
-
-func substr(s string, pos, length int) string{
+func substr(s string, pos, length int) string {
     runes:=[]rune(s)
     l := pos+length
     if l > len(runes) {
@@ -79,22 +78,43 @@ func substr(s string, pos, length int) string{
     }
     return string(runes[pos:l])
 }
-// uses encoding/json to decode a json response
-// func decode(resp []byte) {
-// 	type Message struct {
-// 		LastPrice, ChangePercent float32
-// 		Symbol string
-// 	}
-// 	var m Message
-// 	err := json.Unmarshal(resp, &m)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	var color int
-// 	if m.ChangePercent > 0 {
-// 		color = 32
-// 	} else {
-// 		color = 31
-// 	}
-// 	fmt.Printf("%s: %f \x1b[%d;1m(%f)\x1b[0m\n", m.Symbol, m.LastPrice, color, m.ChangePercent)
-// }
+
+func (d Data) String() string {
+	color := 0
+	change, err := strconv.ParseFloat(d.Change, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if change > 0 {
+		color = 32
+	} else {
+		color = 31
+	}
+	changePct := strings.Split(d.ChangePct, " ")
+	percent := changePct[len(changePct)-1]
+	return fmt.Sprintf("\033[1m %s  \t\033[0m\033[%dm%s (%s)\t\033[0m%s\t%s %s\t%s\t%s\t%s", d.Symbol,color, d.Change, percent, d.LastTradePrice, d.LastTradeDate, d.LastTradeTime, d.Open, d.High, d.Low)
+
+}
+
+func decodeXml(body io.ReadCloser) {
+
+	XMLdata := xml.NewDecoder(body)
+
+	var s Stock
+
+	err := XMLdata.Decode(&s)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w := new(tabwriter.Writer)
+
+	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
+
+	fmt.Fprintln(w, "\033[4mSymbol\tChange\033[4m\tLast\033[4m\t \tOpen\tHigh\tLow\033[0m")
+
+	for _, stock := range s.Data {
+		fmt.Fprintln(w, stock)
+	}
+	w.Flush()
+}
