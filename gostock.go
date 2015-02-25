@@ -111,7 +111,7 @@ func decodeXml(body io.ReadCloser) {
 
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
 
-	fmt.Fprintln(w, "\033[4mSymbol\tChange\033[4m\tLast\033[4m\t \tOpen\tHigh\tLow\033[0m")
+	fmt.Fprintln(w, "\033[4mSymbol\tChange\033[4m\tLast\033[4m\t\tOpen\tHigh\tLow\033[0m")
 
 	for _, stock := range s.Data {
 		fmt.Fprintln(w, stock)
