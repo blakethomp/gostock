@@ -174,7 +174,7 @@ func (d Data) String() string {
 
 		fs = "\033[%sm%s\033[0m\t"
 		s += fmt.Sprintf(fs, ansi, value)
-  }
+	}
 
 	return s
 }
