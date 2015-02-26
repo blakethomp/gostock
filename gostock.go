@@ -125,8 +125,7 @@ func formatOutput (s Stock) {
 		clear = true
 	}
 
-
-	fmt.Fprintln(w, time.Now().String())
+	fmt.Fprintln(w, "\033[K" + time.Now().Round(time.Second).String())
 
 	var d Data
 	v := reflect.ValueOf(d) // reflect lets us iterate on the struct
