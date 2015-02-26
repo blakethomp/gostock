@@ -1,8 +1,15 @@
 # gostock
 Command line stock ticker in golang
 
-Retrieves stock data from Yahoo and prints it in a tabulated display
+Retrieves stock data from Yahoo and prints it in a tabulated display. Yahoo limits public requests to 2,000 requests/hour per IP.
 
 Stock symbols are read from stocks.txt, one symbol on each line
 
-Yahoo limits public requests to 2,000 requests/hour per IP
+This will refresh at a default interval of 3 seconds, but this can be set using the interval flag:
+
+```
+-i 5s
+-interval 5s
+```
+
+
