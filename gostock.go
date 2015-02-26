@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"reflect"
 	"time"
+	"flag"
 )
 
 type Stock struct {
@@ -33,21 +34,38 @@ type Data struct {
 	Pct string `xml:"changePct"`
 }
 
+var clear bool
 
-func main() {
+var intervalFlag time.Duration
 
-	loadData(2)
-
+func init() {
+	flag.DurationVar(&intervalFlag, "interval", 3*time.Second, "interval to refresh list")
+	flag.DurationVar(&intervalFlag, "i", 3*time.Second, "interval to refresh list")
 }
 
-func loadData(n time.Duration) {
-	content, err := ioutil.ReadFile("stocks.txt")
+func main() {
+	clear = false
+
+	flag.Parse()
+
+	duration := intervalFlag
+
+	data, err := ioutil.ReadFile("stocks.txt")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	symbols := strings.Join(strings.Split(string(content), "\n"), ",")
+	loadData(data)
+
+	for _ = range time.Tick(duration) {
+		loadData(data)
+	}
+}
+
+func loadData(data []byte) {
+
+	symbols := strings.Join(strings.Split(string(data), "\n"), ",")
 
 	format := make([]string, 9)
 	format[0] = "s" 	// Symbol
@@ -66,19 +84,18 @@ func loadData(n time.Duration) {
 	v.Add("format", "xml")
 	v.Add("env", "store://datatables.org/alltableswithkeys")
 
-	for _ = range time.Tick(n * time.Second) {
-		resp, err := http.Get("https://query.yahooapis.com/v1/public/yql?" + v.Encode())
 
-		if err != nil {
-			log.Fatal(err)
-		}
+	resp, err := http.Get("https://query.yahooapis.com/v1/public/yql?" + v.Encode())
 
-		defer resp.Body.Close() // Defer the closing of the request
-
-		stocks := decodeXml(resp.Body)
-
-		formatOutput(stocks)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	defer resp.Body.Close() // Defer the closing of the request
+
+	stocks := decodeXml(resp.Body)
+
+	formatOutput(stocks)
 }
 
 func decodeXml(body io.ReadCloser) Stock {
@@ -100,8 +117,16 @@ func formatOutput (s Stock) {
 
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
 
-	// Clear the terminal and reset the cursor, print the time
-	fmt.Fprintln(w, "\033[2J\033[H"+time.Now().String())
+	if clear {
+		fmt.Fprintf(w, "\033[%dA", len(s.Data) + 2)
+	} else {
+		// Clear the terminal and reset the cursor
+		fmt.Print("\033[2J\033[H")
+		clear = true
+	}
+
+
+	fmt.Fprintln(w, time.Now().String())
 
 	var d Data
 	v := reflect.ValueOf(d) // reflect lets us iterate on the struct
@@ -116,9 +141,6 @@ func formatOutput (s Stock) {
 			separator = ""
 		}
 
-		if value == "Pct" {
-			// value = "\033[32m\033[0m"+value
-		}
 		// Print the header labels underlined
 		header += fmt.Sprintf("\033[4m%s\033[0m%s", value, separator)
 	}
@@ -156,8 +178,8 @@ func (d Data) String() string {
 				ansi = color
 				flt := v.Field(i).Float()
 				value = strconv.FormatFloat(flt, 'f', 2, 32)
-				i := strings.Index(value, "-")
-				if i < 0 {
+
+				if d.Change > 0 {
 					value = "+" + value
 				}
 
