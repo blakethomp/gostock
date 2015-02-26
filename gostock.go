@@ -23,13 +23,13 @@ type Stock struct {
 
 type Data struct {
 	Symbol string `xml:"symbol"`
-	Open string `xml:"open"`
-	High string `xml:"high"`
-	Low string `xml:"low"`
+	Open float32 `xml:"open"`
+	High float32 `xml:"high"`
+	Low float32 `xml:"low"`
 	Date string `xml:"lastTradeDate"`
 	Time string `xml:"lastTradeTime"`
-	Last string `xml:"lastTradePrice"`
-	Change string `xml:"change"`
+	Last float32 `xml:"lastTradePrice"`
+	Change float32 `xml:"change"`
 	Pct string `xml:"changePct"`
 }
 
@@ -55,7 +55,7 @@ func loadData(n time.Duration) {
 	format[2] = "t1"	// Last Trade Time
 	format[3] = "l1"	// Last Trade (Price Only)
 	format[4] = "c6"	// Change (Realtime)
-	format[5] = "k2"	// Change Percent (Realtime)
+	format[5] = "p2"	// Change Percent (Realtime)
 	format[6] = "o"		// Open
 	format[7] = "h"		// Day's High
 	format[8] = "g"		// Day's Low
@@ -115,6 +115,10 @@ func formatOutput (s Stock) {
 		} else {
 			separator = ""
 		}
+
+		if value == "Pct" {
+			// value = "\033[32m\033[0m"+value
+		}
 		// Print the header labels underlined
 		header += fmt.Sprintf("\033[4m%s\033[0m%s", value, separator)
 	}
@@ -132,14 +136,8 @@ func formatOutput (s Stock) {
 func (d Data) String() string {
 	color := "0"
 
-	// Parse the change value into a float to check it's direction
-	change, err := strconv.ParseFloat(d.Change, 32)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// If the change is positive make it green, else red
-	if change > 0 {
+	if d.Change > 0 {
 		color = "32"
 	} else {
 		color = "31"
@@ -156,21 +154,27 @@ func (d Data) String() string {
 
 			case "Change":
 				ansi = color
+				flt := v.Field(i).Float()
+				value = strconv.FormatFloat(flt, 'f', 2, 32)
+				i := strings.Index(value, "-")
+				if i < 0 {
+					value = "+" + value
+				}
 
 			case "Pct":
-				pct := strings.Split(value, " ")
-				value = pct[len(pct)-1]
 				ansi = color
 
 			case "Symbol":
 				ansi = "1"
 
-			case "Low":
+			case "Open", "High", "Low", "Last":
 				ansi = "0"
+				value = strconv.FormatFloat(v.Field(i).Float(), 'f', 2, 32)
 
 			default:
 				ansi = "0"
 		}
+
 
 		fs = "\033[%sm%s\033[0m\t"
 		s += fmt.Sprintf(fs, ansi, value)
