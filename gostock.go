@@ -73,7 +73,7 @@ func loadData(n time.Duration) {
 			log.Fatal(err)
 		}
 
-		defer resp.Body.Close()
+		defer resp.Body.Close() // Defer the closing of the request
 
 		stocks := decodeXml(resp.Body)
 
@@ -100,10 +100,11 @@ func formatOutput (s Stock) {
 
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
 
+	// Clear the terminal and reset the cursor, print the time
 	fmt.Fprintln(w, "\033[2J\033[H"+time.Now().String())
 
 	var d Data
-	v := reflect.ValueOf(d)
+	v := reflect.ValueOf(d) // reflect lets us iterate on the struct
 
 	var value, separator, header string
 
@@ -114,12 +115,13 @@ func formatOutput (s Stock) {
 		} else {
 			separator = ""
 		}
-
+		// Print the header labels underlined
 		header += fmt.Sprintf("\033[4m%s\033[0m%s", value, separator)
 	}
 
 	fmt.Fprintln(w, header)
 
+	// run the stock through String()
 	for _, stock := range s.Data {
 		fmt.Fprintln(w, stock)
 	}
@@ -130,11 +132,13 @@ func formatOutput (s Stock) {
 func (d Data) String() string {
 	color := "0"
 
+	// Parse the change value into a float to check it's direction
 	change, err := strconv.ParseFloat(d.Change, 32)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// If the change is positive make it green, else red
 	if change > 0 {
 		color = "32"
 	} else {
