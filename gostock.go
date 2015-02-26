@@ -34,8 +34,6 @@ type Data struct {
 	Pct string `xml:"changePct"`
 }
 
-var clear bool
-
 var intervalFlag time.Duration
 
 func init() {
@@ -44,7 +42,6 @@ func init() {
 }
 
 func main() {
-	clear = false
 
 	flag.Parse()
 
@@ -117,13 +114,9 @@ func formatOutput (s Stock) {
 
 	w.Init(os.Stdout, 0, 8, 1, '\t', 0)
 
-	if clear {
-		fmt.Fprintf(w, "\033[%dA", len(s.Data) + 2)
-	} else {
-		// Clear the terminal and reset the cursor
-		fmt.Print("\033[2J\033[H")
-		clear = true
-	}
+	// Clear the terminal and reset the cursor
+	fmt.Print("\033[2J\033[H")
+
 
 	fmt.Fprintln(w, "\033[K" + time.Now().Round(time.Second).String())
 
