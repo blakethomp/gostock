@@ -12,4 +12,5 @@ This will refresh at a default interval of 3 seconds, but this can be set using 
 -interval 5s
 ```
 
+A stocks.txt file will need to be placed in your user directory
 
