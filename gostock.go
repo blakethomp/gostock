@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"text/tabwriter"
 	"io"
 	"io/ioutil"
@@ -50,7 +51,12 @@ func main() {
 
 	duration := intervalFlag
 
-	data, err := ioutil.ReadFile("~/stocks.txt")
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	data, err := ioutil.ReadFile(usr.HomeDir + "/stocks.txt")
 
 	if err != nil {
 		log.Fatal(err)
