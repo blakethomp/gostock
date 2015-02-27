@@ -50,7 +50,7 @@ func main() {
 
 	duration := intervalFlag
 
-	data, err := ioutil.ReadFile("stocks.txt")
+	data, err := ioutil.ReadFile("~/stocks.txt")
 
 	if err != nil {
 		log.Fatal(err)
