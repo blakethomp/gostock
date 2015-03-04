@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"time"
 	"flag"
+	"regexp"
 )
 
 type Stock struct {
@@ -155,15 +156,6 @@ func formatOutput (s Stock) {
 }
 
 func (d Data) String() string {
-	color := "0"
-
-	// If the change is positive make it green, else red
-	change, err := strconv.ParseFloat(d.Change, 32)
-	if err != nil || change > 0 {
-		color = "32"
-	} else {
-		color = "31"
-	}
 
 	v := reflect.ValueOf(d)
 
@@ -175,20 +167,38 @@ func (d Data) String() string {
 		switch v.Type().Field(i).Name {
 
 			case "Change":
-				ansi = color
-				val, err := strconv.ParseFloat(value, 32)
+				val, err := strconv.ParseFloat(value, 64)
 				if err != nil {
-					value = "N/A"
+					value = value
 				} else {
-					value = strconv.FormatFloat(val, 'f', 2, 32)
+					value = strconv.FormatFloat(val, 'f', 2, 64)
 				}
 
-				if change > 0 {
+				if val > 0 {
+					ansi = "32"
 					value = "+" + value
+				} else {
+					ansi = "31"
+
 				}
 
 			case "Pct":
-				ansi = color
+				val, err := strconv.ParseFloat(strings.Replace(value, "%", "", 1), 64)
+				if err != nil {
+					log.Fatal(err)
+					value = value
+				} else {
+					value = strconv.FormatFloat(val, 'f', 2, 64)
+				}
+
+				if val > 0 {
+					ansi = "32"
+					value = "+" + value
+				} else {
+					ansi = "31"
+				}
+
+				value = value + "%"
 
 			case "Symbol":
 				ansi = "1"
@@ -201,11 +211,19 @@ func (d Data) String() string {
 
 			case "Open", "High", "Low", "Last":
 				ansi = "0"
-				val, err := strconv.ParseFloat(value, 32)
+				val, err := strconv.ParseFloat(value, 64)
 				if err != nil {
 					value = "N/A"
 				} else {
-					value = strconv.FormatFloat(val, 'f', 2, 32)
+					value = strconv.FormatFloat(val, 'f', 2, 64)
+				}
+
+			case "Date":
+				reg, err := regexp.Compile("\\d{2}(\\d{2})$")
+				if err != nil {
+					value = value
+				} else {
+					value = reg.ReplaceAllString(value, "$1")
 				}
 
 
