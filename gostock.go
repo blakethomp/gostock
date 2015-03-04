@@ -179,7 +179,6 @@ func (d Data) String() string {
 					value = "+" + value
 				} else {
 					ansi = "31"
-
 				}
 
 			case "Pct":
@@ -206,7 +205,6 @@ func (d Data) String() string {
 				if len(value) < maxLen {
 					diff := maxLen - len(value)
 					value = value + strings.Repeat(" ", diff)
-
 				}
 
 			case "Open", "High", "Low", "Last":
@@ -225,7 +223,6 @@ func (d Data) String() string {
 				} else {
 					value = reg.ReplaceAllString(value, "$1")
 				}
-
 
 			default:
 				ansi = "0"
