@@ -23,15 +23,17 @@ type Stock struct {
 	Data []Data `xml:"results>row"`
 }
 
+var stockContainer Stock
+
 type Data struct {
 	Symbol string `xml:"symbol"`
-	Open float32 `xml:"open"`
-	High float32 `xml:"high"`
-	Low float32 `xml:"low"`
+	Open string `xml:"open"`
+	High string `xml:"high"`
+	Low string `xml:"low"`
 	Date string `xml:"lastTradeDate"`
 	Time string `xml:"lastTradeTime"`
-	Last float32 `xml:"lastTradePrice"`
-	Change float32 `xml:"change"`
+	Last string `xml:"lastTradePrice"`
+	Change string `xml:"change"`
 	Pct string `xml:"changePct"`
 }
 
@@ -105,14 +107,15 @@ func decodeXml(body io.ReadCloser) Stock {
 
 	XMLdata := xml.NewDecoder(body)
 
-	var s Stock
+	// reset value of stockContainer
+	stockContainer = Stock{}
 
-	err := XMLdata.Decode(&s)
+	err := XMLdata.Decode(&stockContainer)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return s
+	return stockContainer
 }
 
 func formatOutput (s Stock) {
@@ -122,7 +125,7 @@ func formatOutput (s Stock) {
 
 	fmt.Print("\033[2J\033[H")
 
-	fmt.Fprintln(w, "\033[K" + time.Now().Round(time.Second).String())
+	fmt.Fprintln(w, time.Now().Round(time.Second).String())
 
 	var d Data
 	v := reflect.ValueOf(d) // reflect lets us iterate on the struct
@@ -155,7 +158,8 @@ func (d Data) String() string {
 	color := "0"
 
 	// If the change is positive make it green, else red
-	if d.Change > 0 {
+	change, err := strconv.ParseFloat(d.Change, 32)
+	if err != nil || change > 0 {
 		color = "32"
 	} else {
 		color = "31"
@@ -172,10 +176,14 @@ func (d Data) String() string {
 
 			case "Change":
 				ansi = color
-				flt := v.Field(i).Float()
-				value = strconv.FormatFloat(flt, 'f', 2, 32)
+				val, err := strconv.ParseFloat(value, 32)
+				if err != nil {
+					value = "N/A"
+				} else {
+					value = strconv.FormatFloat(val, 'f', 2, 32)
+				}
 
-				if d.Change > 0 {
+				if change > 0 {
 					value = "+" + value
 				}
 
@@ -184,10 +192,22 @@ func (d Data) String() string {
 
 			case "Symbol":
 				ansi = "1"
+				maxLen := maxSymbolLength(stockContainer)
+				if len(value) < maxLen {
+					diff := maxLen - len(value)
+					value = value + strings.Repeat(" ", diff)
+
+				}
 
 			case "Open", "High", "Low", "Last":
 				ansi = "0"
-				value = strconv.FormatFloat(v.Field(i).Float(), 'f', 2, 32)
+				val, err := strconv.ParseFloat(value, 32)
+				if err != nil {
+					value = "N/A"
+				} else {
+					value = strconv.FormatFloat(val, 'f', 2, 32)
+				}
+
 
 			default:
 				ansi = "0"
@@ -198,4 +218,14 @@ func (d Data) String() string {
 	}
 
 	return s
+}
+
+func maxSymbolLength(s Stock) int {
+	size := 0
+	for _, stock := range s.Data {
+		if len(stock.Symbol) > size {
+			size = len(stock.Symbol)
+		}
+	}
+	return size
 }
