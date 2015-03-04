@@ -168,9 +168,7 @@ func (d Data) String() string {
 
 			case "Change":
 				val, err := strconv.ParseFloat(value, 64)
-				if err != nil {
-					value = value
-				} else {
+				if err == nil {
 					value = strconv.FormatFloat(val, 'f', 2, 64)
 				}
 
@@ -183,10 +181,7 @@ func (d Data) String() string {
 
 			case "Pct":
 				val, err := strconv.ParseFloat(strings.Replace(value, "%", "", 1), 64)
-				if err != nil {
-					log.Fatal(err)
-					value = value
-				} else {
+				if err == nil {
 					value = strconv.FormatFloat(val, 'f', 2, 64)
 				}
 
@@ -197,30 +192,26 @@ func (d Data) String() string {
 					ansi = "31"
 				}
 
-				value = value + "%"
+				value += "%"
 
 			case "Symbol":
 				ansi = "1"
 				maxLen := maxSymbolLength(stockContainer)
 				if len(value) < maxLen {
 					diff := maxLen - len(value)
-					value = value + strings.Repeat(" ", diff)
+					value += strings.Repeat(" ", diff)
 				}
 
 			case "Open", "High", "Low", "Last":
 				ansi = "0"
 				val, err := strconv.ParseFloat(value, 64)
-				if err != nil {
-					value = "N/A"
-				} else {
+				if err == nil {
 					value = strconv.FormatFloat(val, 'f', 2, 64)
 				}
 
 			case "Date":
 				reg, err := regexp.Compile("\\d{2}(\\d{2})$")
-				if err != nil {
-					value = value
-				} else {
+				if err == nil {
 					value = reg.ReplaceAllString(value, "$1")
 				}
 
