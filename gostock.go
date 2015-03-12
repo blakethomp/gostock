@@ -113,7 +113,7 @@ func decodeXml(body io.ReadCloser) Stock {
 
 	err := XMLdata.Decode(&stockContainer)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	return stockContainer
