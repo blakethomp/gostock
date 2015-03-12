@@ -78,8 +78,8 @@ func loadData(data []byte) {
 	format[1] = "d1" 	// Last Trade Date
 	format[2] = "t1"	// Last Trade Time
 	format[3] = "l1"	// Last Trade (Price Only)
-	format[4] = "c6"	// Change (Realtime)
-	format[5] = "p2"	// Change Percent (Realtime)
+	format[4] = "c1"	// Change
+	format[5] = "p2"	// Change Percent
 	format[6] = "o"		// Open
 	format[7] = "h"		// Day's High
 	format[8] = "g"		// Day's Low
